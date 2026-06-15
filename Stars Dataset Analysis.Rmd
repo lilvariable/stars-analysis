@@ -1,0 +1,375 @@
+---
+title: "Stars Dataset Analysis"
+author: "Sebastian Uribe"
+date: "`r Sys.Date()`"
+output: pdf_document
+urlcolor: blue
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, dev = "pdf", fig.pos = "H")
+setwd("/Users/lilvariable/R_Projects/TTU Statistics for Data Science")
+library(dplyr)
+library(ggplot2)
+stars <- read.csv("6 class csv.csv")
+```
+
+# Stars Dataset
+
+The [Stars Dataset](https://www.kaggle.com/datasets/deepu1109/star-dataset) is a dataset that consists of several features of stars. The goal of the dataset is to verify that stars are able to be represented by a diagram, specifically the [Hertzsprung-Russell Diagram](https://en.wikipedia.org/wiki/Hertzsprung%E2%80%93Russell_diagram).
+
+In this document, we will use exploratory data analysis, descriptive statistics, and visualizations to breakdown the features in the dataset to validate the purpose of the dataset.
+
+## Glimpse into the Stars Dataset
+
+```{r stars, echo=FALSE}
+glimpse(stars)
+```
+
+Here we see that the dataset consists of seven features of stars:
+
+1\. Temperature (Kelvin)
+
+2\. Luminosity (L/Lo)
+
+3\. Radius (R/Ro)
+
+4\. Absolute Magnitude (Mv)
+
+5\. Star Type
+
+6\. Star Color
+
+7\. Spectral Class
+
+Where:
+
+Lo = 3.828 x 10\^26 Watts (Avg Luminosity of Sun)
+
+Ro = 6.9551 x 10\^8 m (Avg Radius of Sun)
+
+Let's take a closer look at the elements in the Star Type, Star Color, and Spectral Class columns to understand the visual categories of the stars.
+
+## Distinct Star Types, Star Colors, and Spectral Classes
+
+### Star Types
+
+```{r distinct-star-types, echo=FALSE}
+distinct_star_types <- stars %>%
+  distinct(Star.type)
+distinct_star_types
+```
+
+The distinct elements in the Star.Type column is a range of integers from 0 to 5. The details in the csv file from the Kaggle website gives us a list of what the integers represent:
+
+Brown Dwarf -\> Star Type = 0
+
+Red Dwarf -\> Star Type = 1
+
+White Dwarf-\> Star Type = 2
+
+Main Sequence -\> Star Type = 3
+
+Supergiant -\> Star Type = 4
+
+Hypergiant -\> Star Type = 5
+
+### Star Color
+
+```{r distinct-star-colors, echo=FALSE}
+distinct_star_colors <- stars %>%
+  distinct(Star.color)
+distinct_star_colors
+```
+
+We see that the Star.color column raises a labeling inconsistency. There are several colors that are repeated due to capitalization, hyphen, and spacing differences. The prominent example is the blue-white color: "Blue White", "Blue white", "Blue-white", and "Blue-White."
+
+### Spectral Classes
+
+```{r distinct-star-classes, echo=FALSE}
+distinct_spectral_classes <- stars %>%
+  distinct(Spectral.Class)
+distinct_spectral_classes
+```
+
+The values in the Spectral.Class column are clean and consistent.
+
+The Spectral Class is a [Stellar Classification](https://en.wikipedia.org/wiki/Stellar_classification) that categorizes stars under the Harvard Spectral Classification system using the letters O, B, A, F, G, K, M arranged from hottest (O-Class) to coldest (M-Class).
+
+Each letter class has their own color which provides a better baseline for assigning a color to each star. Therefore, in future visualizations, The Spectral.Class column will be used instead of the Star.color column.
+
+Additionally, the spectral class has levels to each class with O-Class being the highest (hottest) and M-Class being the lowest (coolest).
+
+```{r arrange-class-order, echo=TRUE}
+stars <- stars %>% 
+  mutate(Spectral.Class = factor(Spectral.Class,
+                                 levels = c("O", "B", "A", "F", "G", "K", "M")))
+```
+
+Now we have a better understanding of each column in the dataset:
+
+1\. Temperature (Kelvin)
+
+2\. Luminosity (L/Lo)
+
+3\. Radius (R/Ro)
+
+4\. Absolute Magnitude (Mv)
+
+5\. Star Type (Red Dwarf, Brown Dwarf, White Dwarf, Main Sequence , SuperGiants, HyperGiants)
+
+6\. Star Color (white,Red,Blue,Yellow,yellow-orange etc)
+
+7\. Spectral Class (O,B,A,F,G,K,M)
+
+## Stars Analysis
+
+Let's take a closer look at the data by using descriptive statistics. Specifically, let's look at the Temperature, Luminosity, and Radius columns of all the stars in the dataset.
+
+### Temperature
+
+A stars temperature is primarily measured by its color. This is done through [blackbody radiation](https://academics.uccs.edu/srehorst/labs/pes1100/Star%20Temp/PES%201100%20Star%20Temp%20Background.pdf) where the temperature of a star is determined by the wavelengths of light they emit. We should see a trend of red stars being cool where blue/white are the hottest. 
+
+
+```{r stars-temperature,echo=FALSE}
+stars_temp <- stars %>%
+  select(Temperature..K., Spectral.Class, Star.type)
+str(stars_temp)
+tail(stars_temp)
+```
+
+To understand the range of temperatures, let's make a histogram of the temperatures to help us visualize the values.
+
+```{r temperature-histogram,echo=FALSE}
+stars_temp_hist <- ggplot(stars_temp, mapping = aes(x = Temperature..K.,
+                                                                     fill = Spectral.Class)) +
+  geom_histogram(binwidth = 2000, position = "stack", alpha = 0.7) +
+  scale_fill_manual(values = c(
+    "M" = "#FF3300",
+    "K" = "#FF8C00",
+    "G" = "#FFD700",
+    "F" = "#FFEDA0",
+    "A" = "#C8D8FF",
+    "B" = "#7FB8FF",
+    "O" = "#5B8DFF"
+  )) +
+  labs(title = "Distribution of Star Temperature") +
+  theme_dark()
+stars_temp_hist
+```
+
+We see that histogram is right skewed. The majority of the stars have a temperature of less than 10,000K and that many of them are M-Class. The histogram shows a trend that when the temperature increases, their class increases.
+
+```{r temperature-analysis-grouped-by-Spectral.Class,echo=FALSE}
+stars %>%
+  group_by(Spectral.Class) %>%
+  summarize(
+    count = n(),
+    temp_mean = mean(Temperature..K.),
+    temp_median = median(Temperature..K.),
+    temp_sd = sd(Temperature..K.)
+  )
+```
+
+The table tells us the mean, median, standard deviation, and interquartile range for the stars' temperature per spectral class. From the mean and median columns, the temperature decrease as the spectral classes decrease. From the standard deviation column, the temperatures in the higher classes are highly spread out, which is apparent from the histogram.
+
+G-Class is the smallest class in the data set with only 1 star. The largest class is M-Class which we could also see in the histogram.
+
+### Luminosity
+
+The luminosity of a star measures its total energy output per unit of time. In this dataset, the luminosity of each star is expressed relative to the [Sun's luminosity](https://en.wikipedia.org/wiki/Solar_luminosity) (Lo = 3.828 × 10^26 Watts). For example, a value of L/Lo = 10 means the star emits 10 times more energy than our Sun.
+
+```{r stars-luminosity,echo=FALSE}
+stars_lumi <- stars %>%
+  select(Luminosity.L.Lo., Spectral.Class, Star.type)
+str(stars_lumi)
+tail(stars_lumi)
+```
+
+By taking a look into the luminosity values, the range goes from \~0.0001 to \~800,000 luminosity. To account for this, the visualizations and descriptive statistics for luminosity will be on a log10 scale.
+
+Let's plot the luminosity values on a histogram.
+
+```{r luminosity-histogram,echo=FALSE}
+stars_lumi_hist <- ggplot(stars_lumi, mapping = aes(x = log10(Luminosity.L.Lo.),
+                                                                     fill = Spectral.Class,)) +
+  geom_histogram(binwidth = 0.5, position = "stack", alpha = 0.7) +
+  scale_fill_manual(values = c(
+    "M" = "#FF3300",
+    "K" = "#FF8C00",
+    "G" = "#FFD700",
+    "F" = "#FFEDA0",
+    "A" = "#C8D8FF",
+    "B" = "#7FB8FF",
+    "O" = "#5B8DFF"
+  )) +
+    labs(title = "Distribution of Star Luminosity") +
+  theme_dark()
+stars_lumi_hist
+```
+
+The histogram follows a bimodal distribution where there are two distinct peaks with a gap between them. The left peak is dominated by M-Class stars which are the brown and red dwarfs. The A-Class and B-Class stars in the left peak are white dwarfs. The gap represents the main sequence stars which is notably sparse in this dataset. The right peak are the supergiants and hypergiants. We see that some M-Class and K-Class stars shine as bright as O-Class and B-Class stars.
+
+Any star is in any class type is able to shine extremely dim to extremely bright.
+
+```{r luminosity-analysis-grouped-by-Spectral.Class,echo=FALSE}
+stars %>%
+  group_by(Spectral.Class) %>%
+  summarize(
+    count = n(),
+    lumi_mean_log10 = mean(log10(Luminosity.L.Lo.)),
+    lumi_median_log10 = median(log10(Luminosity.L.Lo.)),
+    lumi_sd_log10 = sd(log10(Luminosity.L.Lo.))
+  )
+```
+
+From the table, the sporadic luminosity of stars regardless of their class is made evident. The noticeable differences in mean and median luminosity show how the extreme cases weigh heavily in these calculations.
+
+## Radius
+
+A star's radius is calculated in a similar manner to luminosity. The radius of each star is expressed relative to the Sun's radius (Ro = 6.9551 x 10^8 m). For example, R/Ro = 10 means that the star is 10 times larger than our Sun.
+
+```{r stars-radius,echo=FALSE}
+stars_radius <- stars %>%
+  select(Radius.R.Ro., Spectral.Class, Star.type)
+str(stars_radius)
+tail(stars_radius)
+```
+
+The radius of stars range from being a small fraction of the size of our Sun to being up to a thousand times larger. We will apply a log10 scale on the radius as well for better interpretation.
+
+Let's plot the radius of stars on a histogram to visualize the data. 
+
+```{r radius-histogram,echo=FALSE}
+stars_radius_hist <- ggplot(stars_radius, mapping = aes(x = log10(Radius.R.Ro.),
+                                                                     fill = Spectral.Class,)) +
+  geom_histogram(binwidth = 0.3, position = "stack", alpha = 0.7) +
+  scale_fill_manual(values = c(
+    "M" = "#FF3300",
+    "K" = "#FF8C00",
+    "G" = "#FFD700",
+    "F" = "#FFEDA0",
+    "A" = "#C8D8FF",
+    "B" = "#7FB8FF",
+    "O" = "#5B8DFF"
+  )) +
+    labs(title = "Distribution of Star Radius") +
+  theme_dark()
+stars_radius_hist
+```
+
+The spread of the radii follow a multimodal distribution. The far left cluster are white dwarfs. Despite their compact size, white dwarfs reach very high surface temperatures which gives them their blue-white spectral classification. The middle clusters are the brown dwarfs, red dwarfs, and main sequence stars. These types of stars have similar size to our Sun. The far right cluster are the supergiant and hypergiant stars. We see how M-class stars can reach the size of some of the largest stars in the universe despite their light and temperature output. 
+
+
+```{r radius-analysis-grouped-by-Spectral.Class,echo=FALSE}
+stars %>%
+  group_by(Spectral.Class) %>%
+  summarize(
+    count = n(),
+    radius_mean_log10 = mean(log10(Radius.R.Ro.)),
+    radius_median_log10 = median(log10(Radius.R.Ro.)),
+    radius_sd_log10 = sd(log10(Radius.R.Ro.))
+  )
+```
+
+The table tells a similar story to the histogram. Comparing the mean, median, and standard deviation radii show how classes like M-Class, F-Class, and A-Class have a diversity of sizes. Taking a look at the mean/median for the G-Class star of 3.17 (log10), this means that the star has a radius of ~1,480 R/Ro. This makes the star a hypergiant, which is rare for this class. 
+
+```{r G-Class, echo=FALSE}
+G_class <- stars %>%
+  select(Temperature..K., Luminosity.L.Lo., Radius.R.Ro., Star.type, Spectral.Class) %>%
+  filter(Spectral.Class == "G")
+G_class
+```
+\newpage
+
+# Main Sequence Imbalance?
+
+```{r main-sequence-stars,echo=FALSE}
+main_sequence_stars <- stars %>%
+  filter(Star.type == 3)
+str(main_sequence_stars)
+```
+
+According to [NASA](https://science.nasa.gov/universe/stars/types/#intro), main sequence stars make up about 90% of the stars in the observable universe. The [Harvard Spectral Classification](https://en.wikipedia.org/wiki/Stellar_classification) demonstrates the variety of main sequence stars, spanning the entire spectral class.
+
+However in this dataset as mentioned before, main sequence stars make up about 17% of the dataset with 40 of them in total.
+
+The reasoning for this is that the dataset was created for machine learning purposes. The stars in the dataset went through balanced sampling to train machine learning models. Having main sequence stars dominate would bias a model into always predicting this star type.
+
+Let's take a look at the assortment of main sequence stars in the dataset by making a scatter plot comparing the temperature and luminosity, similar to structure of the [HR-Diagram](https://en.wikipedia.org/wiki/Hertzsprung%E2%80%93Russell_diagram).
+
+```{r main-sequence-temp-v-lumi-plot,echo=FALSE}
+main_sequence_stars_plot <- ggplot(main_sequence_stars, mapping = aes(x = Temperature..K., y = Luminosity.L.Lo., size = Radius.R.Ro., color = Spectral.Class)) +
+  geom_point() +
+  scale_x_reverse() +
+  scale_y_log10() +
+  scale_color_manual(values = c(
+    "M" = "#FF3300",
+    "K" = "#FF8C00",
+    "G" = "#FFD700",
+    "F" = "#FFEDA0",
+    "A" = "#C8D8FF",
+    "B" = "#7FB8FF",
+    "O" = "#5B8DFF"
+  )) +
+  theme_dark() +
+  labs(title = 'Main Sequence Stars')
+
+main_sequence_stars_plot
+```
+
+The diagonal trend of the main sequence stars is present in the scatter plot similar to the one in the HR-Diagram. The upper left is stars with high temperature and high luminosity and the bottom right is stars with low temperature and low luminosity. We also see that the radius of the stars increases as their temperature and luminosity increases along the diagonal.
+
+M-Class stars are not present in this case despite their [prominence in the main sequence](https://lco.global/spacebook/stars/types-stars/). This is due to the limitation of the dataset in Star.type == 3 excluding red dwarfs.
+
+O-Class stars are present despite their [scarcity in the main sequence](https://lco.global/spacebook/stars/types-stars/). This could be explained by the dataset being intended for machine learning or could have been a labeling issue.
+
+# HR-Diagram
+
+Finally, let's represent the dataset as an HR-Diagram and compare it to full-fledged one.
+
+```{r HR-Diagram, fig.show="hold", out.width="50%", fig.width = 8, fig.height = 9.1, echo=FALSE}
+HR_Diagram <- ggplot(stars, mapping = aes(x = Temperature..K., y = Luminosity.L.Lo.,
+                              size = Radius.R.Ro.,
+                              color = Spectral.Class)) +
+  geom_point() +
+  scale_x_reverse() +
+  scale_y_log10() +
+  scale_color_manual(values = c(
+    "M" = "#FF3300",
+    "K" = "#FF8C00",
+    "G" = "#FFD700",
+    "F" = "#FFEDA0",
+    "A" = "#C8D8FF",
+    "B" = "#7FB8FF",
+    "O" = "#5B8DFF"
+  )) +
+  theme(
+    panel.background  = element_rect(fill = "black"),
+    plot.background   = element_rect(fill = "black"),
+    panel.grid.major  = element_line(color = "grey20"),
+    panel.grid.minor  = element_line(color = "grey10"),
+    axis.text         = element_text(color = "white"),
+    axis.title        = element_text(color = "white"),
+    legend.background = element_rect(fill = "black"),
+    legend.text       = element_text(color = "white"),
+    legend.title      = element_text(color = "white"),
+    plot.title        = element_text(color = "white")
+  ) +
+  guides(size = guide_legend(override.aes = list(color = "white"))) +
+  labs(title = "HR-Diagram",
+       x     = "Temperature (K)",
+       y     = "Luminosity (L/Lo)")
+HR_Diagram
+knitr::include_graphics("HRDiagram.png")
+```
+
+
+
+Our HR-Diagram demonstrates the main sequence going across the plot as in the actual HR-Diagram. Now we clearly see the M-Class stars on the tail of the diagonal. The group of white dwarfs also similar to the well-established model.
+
+Where the two diagrams differ is in the distribution of the supergiant and hypergiant stars. The plot we created has these stars almost in a line across the top. The actual diagram has the giants clustered and scattered throughout the top of the graph.
+
+## Conclusion
+
+Although this dataset presents limitations and possible labeling issues, the dataset still fulfills its purpose: stars follow a pattern, specifically the pattern a HR-Diagram establishes.
